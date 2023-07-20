@@ -4,7 +4,7 @@
 
 model\
 ----model.py\
-----decoder.py
+----decoder.py\
 utils\
 ----loss.py\
 ----decode.py
