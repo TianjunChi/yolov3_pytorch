@@ -19,8 +19,9 @@ utils.decode.py：对Darknet的输出计算预测的bbox\
 train.py：训练代码\
 eval.py：用于对训练好的模型评估
 
-备注：
-网络定义格式和loss函数参考了https://github.com/miemie2013/Pytorch-DIOU-YOLOv3/blob/master/eval.py的代码，做出部分结构的简化。
-目前计划：
-1.可以把这部分代码作为模板，正在阅读loss函数代码和看看是否有必要修改简化loss.py中loss_layer的定义
+备注：\
+网络定义格式和loss函数主要参考了https://github.com/miemie2013/Pytorch-DIOU-YOLOv3/ 的代码，并做出部分项目和代码结构的简化与调整。
+
+正在进行...：\
+1.可以把这部分代码作为模板，正在阅读loss函数代码和看看是否有必要修改简化loss.py中loss_layer的定义。\
 2.简化train.py，把不属于我们任务场景的部分删去，并做测试。
