@@ -10,7 +10,7 @@ utils\
 ----decode.py
 
 train.py\
-eval.py\
+eval.py
 
 
 model.model.py ：Darknet和内部的类定义\
