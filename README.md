@@ -7,12 +7,11 @@ model\
 ----decoder.py\
 utils\
 ----loss.py\
-----decode.py
-
+----decode.py\
 train.py\
 eval.py
 
-
+对应文件功能：
 model.model.py ：Darknet和内部的类定义\
 model.decoder.py ：Decoder，用于对训练好的网络做评估\
 utils.loss.py：用于定义训练的损失\
