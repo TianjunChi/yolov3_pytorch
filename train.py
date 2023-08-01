@@ -8,7 +8,10 @@ import numpy as np
 import os
 import platform
 from model.model import Darknet
-from utils import YoloLoss
+from util.loss import YoloLoss
+from multiprocessing.dummy import Pool as ThreadPool
+from multiprocessing.pool import ThreadPool
+import torch.multiprocessing as mp
 
 sysstr = platform.system()
 use_cuda = torch.cuda.is_available()
@@ -115,7 +118,7 @@ def random_translate(image, bboxes):
 
 def parse_annotation(annotation, train_input_size, annotation_type):
     line = annotation.split()
-    image_path = line[0]
+    image_path = "E:\yolov3_pytorch\images" + '\\' + line[0]
     # image_path = '../'+line[0]
     if not os.path.exists(image_path):
         raise KeyError("%s does not exist ... " % image_path)
@@ -249,14 +252,17 @@ def generate_one_batch(annotation_lines, step, batch_size, anchors, num_classes,
                          batch_lbboxes]
 
 
-if __name__ == '__main__':
-    train_path = 'annotation/voc2012_train.txt'
-    val_path = 'annotation/voc2012_val.txt'
-    classes_path = 'data/voc_classes.txt'
+    
 
-    # train_path = 'annotation/coco2017_train.txt'
-    # val_path = 'annotation/coco2017_val.txt'
-    # classes_path = 'data/coco_classes.txt'
+
+if __name__ == '__main__':
+    #train_path = 'annotation/voc2012_train.txt'
+    #val_path = 'annotation/voc2012_val.txt'
+    #classes_path = 'data/voc_classes.txt'
+
+    train_path = 'annotation/coco2017_train.txt'
+    val_path = 'annotation/coco2017_val.txt'
+    classes_path = 'data/coco_classes.txt'
 
     class_names = get_classes(classes_path)
     num_classes = len(class_names)
@@ -330,6 +336,7 @@ if __name__ == '__main__':
     num_train = len(train_lines)
     num_val = len(val_lines)
 
+
     # 一轮的步数
     train_steps = int(num_train / batch_size) if num_train % batch_size == 0 else int(num_train / batch_size) + 1
     val_steps = int(num_val / batch_size) if num_val % batch_size == 0 else int(num_val / batch_size) + 1
@@ -345,8 +352,8 @@ if __name__ == '__main__':
         train_epoch_loss, val_epoch_loss = [], []
 
         # 训练阶段
-        net.train()
         for step in range(train_steps):
+
             batch_image, lables = generate_one_batch(train_lines, step, batch_size, anchors, num_classes,
                                                      max_bbox_per_scale, 'train')
             if use_cuda:
