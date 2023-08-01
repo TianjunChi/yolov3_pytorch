@@ -39,8 +39,7 @@ python demo.py
 ### 注解文件的格式如下：
 xxx/xxx.jpg 18.19,6.32,424.13,421.83,20 323.86,2.65,640.0,421.94,20 
 xxx/xxx.jpg 48,240,195,371,11 8,12,352,498,14 
-# image_path x_min, y_min, x_max, y_max, class_id  x_min, y_min ,..., class_id 
-# make sure that x_max < width and y_max < height
+image_path x_min, y_min, x_max, y_max, class_id  x_min, y_min ,..., class_id 
 
 ### 参考仓库与博客链接：
 1.https://github.com/miemie2013/Pytorch-DIOU-YOLOv3/blob/master/eval.py
