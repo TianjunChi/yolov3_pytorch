@@ -37,8 +37,8 @@ python demo.py
 先用eval.py对pytorch模型评估生成结果文件，之后需要再跑mAP/main.py进行mAP的计算。
 
 ### 注解文件的格式如下：
-xxx/xxx.jpg 18.19,6.32,424.13,421.83,20 323.86,2.65,640.0,421.94,20 
-xxx/xxx.jpg 48,240,195,371,11 8,12,352,498,14 
+xxx/xxx.jpg 18.19,6.32,424.13,421.83,20 323.86,2.65,640.0,421.94,20\
+xxx/xxx.jpg 48,240,195,371,11 8,12,352,498,14\
 image_path x_min, y_min, x_max, y_max, class_id  x_min, y_min ,..., class_id 
 
 ### 参考仓库与博客链接：
