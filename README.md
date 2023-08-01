@@ -22,7 +22,7 @@ eval.py
 
 ### 训练
 1. （推荐）Example of single process training using train.py:\
-python train.py --pattern 0 --batchsize 6 --pretrain_path xxx
+python train.py --pattern 0 --batchsize 6 \
 训练的每个epoch的日志文件和权重会保存。\
 pattern = 0表示从头开始训练；1表示导入现有权重训练。
 
