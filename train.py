@@ -12,6 +12,7 @@ from util.loss import YoloLoss
 from multiprocessing.dummy import Pool as ThreadPool
 from multiprocessing.pool import ThreadPool
 import torch.multiprocessing as mp
+import argparse
 
 sysstr = platform.system()
 use_cuda = torch.cuda.is_available()
@@ -251,18 +252,38 @@ def generate_one_batch(annotation_lines, step, batch_size, anchors, num_classes,
     return batch_image, [batch_label_sbbox, batch_label_mbbox, batch_label_lbbox, batch_sbboxes, batch_mbboxes,
                          batch_lbboxes]
 
-
     
 
 
 if __name__ == '__main__':
+
+    # args
+    parser = argparse.ArgumentParser()
+    # 必要参数
+    parser.add_argument('--pattern', type=int, default= 0 , help='the type of pattern for training')
+    parser.add_argument('--batch_size', type=int, default=6, help='batch size to train')
+    parser.add_argument('--weight_path',type = str,default = 'ep000006-loss1.095-val_loss0.872.pt',help = 'the path of weitgh file')
+
+    # 可选参数
+    parser.add_argument('--classes_path',type = str,default = 'data/coco_classes.txt', help = 'the class list of dataset')
+    parser.add_argument('--train_path',type = str,default = 'annotation/coco2017_train.txt', help = 'the path of train dataset')
+    parser.add_argument('--val_path',type = str,default = 'annotation/coco2017_val.txt', help = 'the path of val dataset')
+    args = parser.parse_args()
+    
+    pattern = args.pattern
+    batch_size = args.batch_size
+    train_path = args.train_path
+    val_path = args.val_path
+    classes_path = args.classes_path
+    weight_path = args.weight_path
+
+    #train_path = 'annotation/coco2017_train.txt'
+    #val_path = 'annotation/coco2017_val.txt'
+    #classes_path = 'data/coco_classes.txt'
+
     #train_path = 'annotation/voc2012_train.txt'
     #val_path = 'annotation/voc2012_val.txt'
     #classes_path = 'data/voc_classes.txt'
-
-    train_path = 'annotation/coco2017_train.txt'
-    val_path = 'annotation/coco2017_val.txt'
-    classes_path = 'data/coco_classes.txt'
 
     class_names = get_classes(classes_path)
     num_classes = len(class_names)
@@ -273,7 +294,7 @@ if __name__ == '__main__':
     ])
 
     # 模式。 0-从头训练，1-读取模型训练（包括解冻），2-读取coco预训练模型训练
-    pattern = 0
+    #pattern = 0
     save_best_only = False
     max_bbox_per_scale = 150
     iou_loss_thresh = 0.7
@@ -292,25 +313,25 @@ if __name__ == '__main__':
     net = Darknet(num_classes, initial_filters=initial_filters)
     if pattern == 2:
         lr = 0.0001
-        batch_size = 8
+        #batch_size = 8
         initial_epoch = 0
         epochs = 999
         # 冻结代码待补充
         # 分支2还未完成
+        net.load_state_dict(torch.load(weight_path))
 
-        net.load_state_dict(torch.load('yolo_bgr_mAP_47.pt'))
     elif pattern == 1:
         lr = 0.000001
-        batch_size = 6
+        #batch_size = 6
         initial_epoch = 20
         epochs = 50
         # 解冻代码待补充
         # 分支1可用
 
-        net.load_state_dict(torch.load('ep000006-loss1.095-val_loss0.872.pt'))
+        net.load_state_dict(torch.load(weight_path))
     elif pattern == 0:
         lr = 0.0001
-        batch_size = 6
+        #batch_size = 6
         initial_epoch = 0
         epochs = 130
 
