@@ -265,7 +265,7 @@ if __name__ == '__main__':
     parser.add_argument('--weight_path',type = str,default = 'ep000006-loss1.095-val_loss0.872.pt',help = 'the path of weitgh file')
 
     # 可选参数
-    parser.add_argument('--classes_path',type = str,default = 'data/coco_classes.txt', help = 'the class list of dataset')
+    parser.add_argument('--classes_path',type = str,default = 'annotation/coco_classes.txt', help = 'the class list of dataset')
     parser.add_argument('--train_path',type = str,default = 'annotation/coco2017_train.txt', help = 'the path of train dataset')
     parser.add_argument('--val_path',type = str,default = 'annotation/coco2017_val.txt', help = 'the path of val dataset')
     args = parser.parse_args()
