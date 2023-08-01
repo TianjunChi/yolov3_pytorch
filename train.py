@@ -316,8 +316,6 @@ if __name__ == '__main__':
         #batch_size = 8
         initial_epoch = 0
         epochs = 999
-        # 冻结代码待补充
-        # 分支2还未完成
         net.load_state_dict(torch.load(weight_path))
 
     elif pattern == 1:
@@ -325,10 +323,8 @@ if __name__ == '__main__':
         #batch_size = 6
         initial_epoch = 20
         epochs = 50
-        # 解冻代码待补充
-        # 分支1可用
-
         net.load_state_dict(torch.load(weight_path))
+        
     elif pattern == 0:
         lr = 0.0001
         #batch_size = 6
