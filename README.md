@@ -21,6 +21,7 @@ eval.py
 - eval.py：用于对训练好的模型评估
 
 ### 训练
+example of training using train.py:\
 python train.py --pattern 0 --batchsize 6 --pretrain_path xxx
 
 ### 参考仓库与博客链接：
