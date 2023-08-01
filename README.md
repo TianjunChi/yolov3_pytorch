@@ -5,9 +5,9 @@ pytorch1.10 cuda11.3 python3.9
 
 ### 文件目录
 annotation\
-----coco017_train.txt
-----coco2017_val.txt
-----coco_classes.txt
+----coco017_train.txt\
+----coco2017_val.txt\
+----coco_classes.txt\
 mAp\
 --main.py
 model\
