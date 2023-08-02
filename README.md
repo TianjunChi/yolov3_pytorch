@@ -9,7 +9,7 @@ annotation\
 ----coco2017_val.txt\
 ----coco_classes.txt\
 mAp\
---main.py
+--main.py\
 model\
 ----model.py\
 ----decoder.py\
