@@ -118,7 +118,7 @@ def random_translate(image, bboxes):
 
 def parse_annotation(annotation, train_input_size, annotation_type):
     line = annotation.split()
-    image_path = "E:\yolov3_pytorch\images" + '\\' + line[0]
+    image_path = "E:\yolov3_pytorch\\annotation\data_parallel\images" + '\\' + line[0]
     # image_path = '../'+line[0]
     if not os.path.exists(image_path):
         raise KeyError("%s does not exist ... " % image_path)
@@ -130,6 +130,7 @@ def parse_annotation(annotation, train_input_size, annotation_type):
         exist_boxes = False
     else:
         bboxes = np.array([list(map(lambda x: int(float(x)), box.split(','))) for box in line[1:]])
+        bboxes = bboxes.transpose(1,0)
     if annotation_type == 'train':
         # image, bboxes = random_fill(np.copy(image), np.copy(bboxes))    # 数据集缺乏小物体时打开
         image, bboxes = random_horizontal_flip(np.copy(image), np.copy(bboxes))
@@ -252,12 +253,16 @@ def generate_one_batch(annotation_lines, step, batch_size, anchors, num_classes,
                          batch_lbboxes]
 
 
-def train(net,num_train,num_val,yolo_loss,batch_size,epochs,lr,initial_epoch,train_lines,val_lines,save_best_only,anchors, num_classes,max_bbox_per_scale):
+def train(net,num_train,num_val,yolo_loss,batch_size,epochs,initial_epoch,train_lines,val_lines,save_best_only,anchors, num_classes,max_bbox_per_scale,pattern,lr):
 
     # 一轮的步数
     train_steps = int(num_train / batch_size) if num_train % batch_size == 0 else int(num_train / batch_size) + 1
     val_steps = int(num_val / batch_size) if num_val % batch_size == 0 else int(num_val / batch_size) + 1
-    optimizer = torch.optim.Adam(net.parameters(), lr=lr)  # 传入 net 的所有参数, 学习率
+    
+    if pattern == 0:# 从头训练
+        optimizer = torch.optim.Adam(net.parameters(), lr=lr)  # 传入 net 的所有参数, 学习率
+    else: # 恢复训练
+        optimizer = optimizer
     best_val_loss = 0.0
 
     for t in range(initial_epoch, epochs, 1):
@@ -269,7 +274,6 @@ def train(net,num_train,num_val,yolo_loss,batch_size,epochs,lr,initial_epoch,tra
         train_epoch_loss, val_epoch_loss = [], []
 
         # 训练阶段
-
         for step in range(train_steps):        
             batch_image, lables = generate_one_batch(train_lines, step, batch_size, anchors, num_classes,
                                                     max_bbox_per_scale, 'train')
@@ -355,11 +359,35 @@ def train(net,num_train,num_val,yolo_loss,batch_size,epochs,lr,initial_epoch,tra
             if save_best_only:
                 if val_epoch_loss < best_val_loss:
                     best_val_loss = val_epoch_loss
-                    torch.save(net.state_dict(),
-                            'ep%.6d-loss%.3f-val_loss%.3f.pt' % ((t + 1), train_epoch_loss, val_epoch_loss))
+                    # save the weight of the network
+                    #torch.save(net.state_dict(),'ep%.6d-loss%.3f-val_loss%.3f.pt' % ((t + 1), train_epoch_loss, val_epoch_loss))
+                    # save the lr of the optimizer
+                    #torch.save(optimizer.state_dict(), 'optimizer_ep%.6d-loss%.3f-val_loss%.3f.pt' % ((t + 1), train_epoch_loss, val_epoch_loss))
+                    #"""
+                    torch.save({
+                    'epoch': epochs,
+                    'model_state_dict': net.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'train_loss_history': train_epoch_loss,
+                    'val_loss_history': val_epoch_loss,
+                    }, 
+                    'ep%.6d-loss%.3f-val_loss%.3f.pt' % ((t + 1), train_epoch_loss, val_epoch_loss) # PATH
+                    )
+                    #"""
+                    
             else:
-                torch.save(net.state_dict(),
-                        'ep%.6d-loss%.3f-val_loss%.3f.pt' % ((t + 1), train_epoch_loss, val_epoch_loss))
+                #torch.save(net.state_dict(),'ep%.6d-loss%.3f-val_loss%.3f.pt' % ((t + 1), train_epoch_loss, val_epoch_loss))
+                # save the lr of the optimizer
+                #torch.save(optimizer.state_dict(), 'optimizer_ep%.6d-loss%.3f-val_loss%.3f.pt' % ((t + 1), train_epoch_loss, val_epoch_loss))
+                torch.save({
+                    'epoch': epochs,
+                    'model_state_dict': net.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'train_loss_history': train_epoch_loss,
+                    'val_loss_history': val_epoch_loss,
+                    }, 
+                    'ep%.6d-loss%.3f-val_loss%.3f.pt' % ((t + 1), train_epoch_loss, val_epoch_loss) # PATH
+                    )
 
         # 打印本轮训练结果
         sys.stdout.write(
@@ -375,10 +403,18 @@ if __name__ == '__main__':
     #val_path = 'annotation/voc2012_val.txt'
     #classes_path = 'data/voc_classes.txt'
 
-    train_path = 'annotation/coco2017_train.txt'
-    val_path = 'annotation/coco2017_val.txt'
-    classes_path = 'data/coco_classes.txt'
+    train_path = 'annotation/data_train.txt'
+    val_path = 'annotation/data_val.txt'
+    classes_path = 'annotation/classes.txt'
+    
+    import argparse
+    parser = argparse.ArgumentParser()
+    # 必要参数
+    parser.add_argument('--optimizer_state', type = str, default= 'optimizer_ep000010-loss305.524-val_loss252.906.pt' , help='the state of the optimizer for the last training')
+    args = parser.parse_args()
 
+    lr_path = args.optimizer_state
+    
     class_names = get_classes(classes_path)
     num_classes = len(class_names)
     anchors = np.array([
@@ -388,7 +424,7 @@ if __name__ == '__main__':
     ])
 
     # 模式。 0-从头训练，1-读取模型训练（包括解冻），2-读取coco预训练模型训练
-    pattern = 1
+    pattern = 0
     save_best_only = False
     max_bbox_per_scale = 150
     iou_loss_thresh = 0.7
@@ -412,23 +448,27 @@ if __name__ == '__main__':
         epochs = 999
         # 冻结代码待补充
         # 分支2还未完成
-
         net.load_state_dict(torch.load('yolo_bgr_mAP_47.pt'))
+        
     elif pattern == 1:
         #lr = 0.000001
         lr = 0.0001
-        batch_size = 6
-        initial_epoch = 2
-        epochs = 10
+        batch_size = 1
+        initial_epoch = 10
+        epochs = 20
         # 解冻代码待补充
         # 分支1可用
-        net.load_state_dict(torch.load('ep000002-loss1237.209-val_loss555.510.pt'))
+        net.load_state_dict(torch.load('ep000010-loss287.997-val_loss240.658.pt'))
+        # 加载上次训练的权重
+        #optimizer = torch.optim.Adam(net.parameters())
+        #optimizer.load_state_dict(torch.load(lr_path))
         
     elif pattern == 0:
         lr = 0.0001
         batch_size = 6
         initial_epoch = 0
         epochs = 10
+        
 
 
     # 打印网络结构
@@ -446,6 +486,8 @@ if __name__ == '__main__':
     if use_cuda:
         yolo_loss = yolo_loss.cuda()  # 如果有gpu可用，损失函数存放在gpu显存里
         net = net.cuda()  # 如果有gpu可用，模型（包括了权重weight）存放在gpu显存里
+    
+    
 
     # 验证集和训练集
     with open(train_path) as f:
@@ -460,7 +502,7 @@ if __name__ == '__main__':
     num_processes = 1
     print('start parallel training')
     for rank in range(num_processes):
-        p = mp.Process(target=train, args=(net_img,num_train,num_val,yolo_loss,batch_size,epochs,lr,initial_epoch,train_lines,val_lines,save_best_only,anchors, num_classes,max_bbox_per_scale))
+        p = mp.Process(target=train, args=(net_img,num_train,num_val,yolo_loss,batch_size,epochs,initial_epoch,train_lines,val_lines,save_best_only,anchors, num_classes,max_bbox_per_scale,pattern,lr))
         p.start()
         processes.append(p)
     for p in processes:
