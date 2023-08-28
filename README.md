@@ -30,8 +30,8 @@ eval.py
 
 ### 训练
 1. （推荐）Example of single process training using train.py:\
-python train.py --pattern 0 --batchsize 6 \
-python train.py --pattern 1 --batchsize 6 --weight_path XXX \
+case1 从头训练：python train.py --pattern 0 --batchsize 6 \
+case2 载入模型，恢复训练：python train.py --pattern 1 --batchsize 6 --weight_path XXX \
 训练的每个epoch的日志文件会保存成txt形式，网络参数、优化器状态会打包成一个.pt文件保存，之后恢复训练时需要输入weight_path路径(.pt文件的)进行重新加载。\
 pattern = 0表示从头开始训练；1表示导入现有权重训练。
 
