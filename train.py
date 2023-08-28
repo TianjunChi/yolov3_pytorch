@@ -119,7 +119,7 @@ def random_translate(image, bboxes):
 
 def parse_annotation(annotation, train_input_size, annotation_type):
     line = annotation.split()
-    image_path = "E:\yolov3_pytorch\images" + '\\' + line[0]
+    image_path = "E:\yolov3_pytorch\\annotation\data_parallel\images" + '\\' + line[0]
     # image_path = '../'+line[0]
     if not os.path.exists(image_path):
         raise KeyError("%s does not exist ... " % image_path)
@@ -131,6 +131,7 @@ def parse_annotation(annotation, train_input_size, annotation_type):
         exist_boxes = False
     else:
         bboxes = np.array([list(map(lambda x: int(float(x)), box.split(','))) for box in line[1:]])
+        bboxes = bboxes.transpose(1,0)
     if annotation_type == 'train':
         # image, bboxes = random_fill(np.copy(image), np.copy(bboxes))    # 数据集缺乏小物体时打开
         image, bboxes = random_horizontal_flip(np.copy(image), np.copy(bboxes))
@@ -262,12 +263,12 @@ if __name__ == '__main__':
     # 必要参数
     parser.add_argument('--pattern', type=int, default= 0 , help='the type of pattern for training')
     parser.add_argument('--batch_size', type=int, default=6, help='batch size to train')
-    parser.add_argument('--weight_path',type = str,default = 'ep000006-loss1.095-val_loss0.872.pt',help = 'the path of weitgh file')
+    parser.add_argument('--weight_path',type = str,default = 'ep000300-loss18.855-val_loss18.174.pt',help = 'the path of weitgh file')
 
     # 可选参数
-    parser.add_argument('--classes_path',type = str,default = 'annotation/coco_classes.txt', help = 'the class list of dataset')
-    parser.add_argument('--train_path',type = str,default = 'annotation/coco2017_train.txt', help = 'the path of train dataset')
-    parser.add_argument('--val_path',type = str,default = 'annotation/coco2017_val.txt', help = 'the path of val dataset')
+    parser.add_argument('--classes_path',type = str,default = 'annotation/classes.txt', help = 'the class list of dataset')
+    parser.add_argument('--train_path',type = str,default = 'annotation/data_train.txt', help = 'the path of train dataset')
+    parser.add_argument('--val_path',type = str,default = 'annotation/data_val.txt', help = 'the path of val dataset')
     args = parser.parse_args()
     
     pattern = args.pattern
@@ -310,34 +311,44 @@ if __name__ == '__main__':
     # 初始卷积核个数
     initial_filters = 8
 
-    net = Darknet(num_classes, initial_filters=initial_filters)
+    net = Darknet(num_classes, initial_filters=initial_filters) # initialize the model
+    device = torch.device('cuda' if use_cuda else 'cpu')
+    net_img = net.to(device)
+
     if pattern == 2:
         lr = 0.0001
-        #batch_size = 8
+        batch_size = 8
         initial_epoch = 0
         epochs = 999
+        # 冻结代码待补充
+        # 分支2还未完成
         net.load_state_dict(torch.load(weight_path))
 
-    elif pattern == 1:
-        lr = 0.000001
-        #batch_size = 6
-        initial_epoch = 20
-        epochs = 50
-        net.load_state_dict(torch.load(weight_path))
-        
-    elif pattern == 0:
+    elif pattern == 1: # load the pretrained model
         lr = 0.0001
-        #batch_size = 6
+        batch_size = 6
+        initial_epoch = 20
+        epochs = 300
+        # 解冻代码待补充
+        # 分支1可用
+        checkpoint = torch.load(weight_path)
+        net.load_state_dict(checkpoint['model_state_dict'])
+        optimizer = torch.optim.Adam(net.parameters(),lr=lr) # define an Adam optimizer
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+    elif pattern == 0: # train from scratch
+        lr = 0.01
+        batch_size = 6
         initial_epoch = 0
         epochs = 130
+        optimizer = torch.optim.Adam(net.parameters(), lr=lr)  # 传入 net 的所有参数, 学习率
 
     # 打印网络结构
     # print(net)
-    device = torch.device('cuda' if use_cuda else 'cpu')
-    net_img = net.to(device)
+
     from torchsummary import summary
 
-    summary(net_img, (3, 416, 416))
+    summary(net_img, (3, 416, 416)) # 416,416 / 320,320
 
     # 建立损失函数
     yolo_loss = YoloLoss(num_classes, iou_loss_thresh, anchors, alpha_1, alpha_2, alpha_3)
@@ -357,10 +368,13 @@ if __name__ == '__main__':
     # 一轮的步数
     train_steps = int(num_train / batch_size) if num_train % batch_size == 0 else int(num_train / batch_size) + 1
     val_steps = int(num_val / batch_size) if num_val % batch_size == 0 else int(num_val / batch_size) + 1
-    optimizer = torch.optim.Adam(net.parameters(), lr=lr)  # 传入 net 的所有参数, 学习率
+    # optimizer = torch.optim.Adam(net.parameters(), lr=lr)  # 传入 net 的所有参数, 学习率
 
     best_val_loss = 0.0
     for t in range(initial_epoch, epochs, 1):
+
+        net.train() # 切换成训练模式
+
         print('Epoch %d/%d\n' % (t + 1, epochs))
         epochStartTime = time.time()
         start = time.time()
@@ -406,7 +420,8 @@ if __name__ == '__main__':
             optimizer.step()  # 将参数更新值施加到 net 的 parameters 上
 
         # 验证阶段
-        net.eval()
+        net.eval() # 切换成测试模式
+
         for step in range(val_steps):
             batch_image, lables = generate_one_batch(val_lines, step, batch_size, anchors, num_classes,
                                                      max_bbox_per_scale, 'val')
@@ -447,17 +462,38 @@ if __name__ == '__main__':
             os.remove(names[i2])
         if t == initial_epoch:
             best_val_loss = val_epoch_loss
-            torch.save(net.state_dict(),
-                       'ep%.6d-loss%.3f-val_loss%.3f.pt' % ((t + 1), train_epoch_loss, val_epoch_loss))
+            torch.save({
+                    'epoch': epochs,
+                    'model_state_dict': net.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'train_loss_history': train_epoch_loss,
+                    'val_loss_history': val_epoch_loss,
+                    }, 
+                    'output\ep%.6d-loss%.3f-val_loss%.3f.pt' % ((t + 1), train_epoch_loss, val_epoch_loss) # PATH
+                    )
         else:
             if save_best_only:
                 if val_epoch_loss < best_val_loss:
                     best_val_loss = val_epoch_loss
-                    torch.save(net.state_dict(),
-                               'ep%.6d-loss%.3f-val_loss%.3f.pt' % ((t + 1), train_epoch_loss, val_epoch_loss))
+                    torch.save({
+                    'epoch': epochs,
+                    'model_state_dict': net.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'train_loss_history': train_epoch_loss,
+                    'val_loss_history': val_epoch_loss,
+                    }, 
+                    'output\ep%.6d-loss%.3f-val_loss%.3f.pt' % ((t + 1), train_epoch_loss, val_epoch_loss) # PATH
+                    )
             else:
-                torch.save(net.state_dict(),
-                           'ep%.6d-loss%.3f-val_loss%.3f.pt' % ((t + 1), train_epoch_loss, val_epoch_loss))
+                torch.save({
+                    'epoch': epochs,
+                    'model_state_dict': net.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'train_loss_history': train_epoch_loss,
+                    'val_loss_history': val_epoch_loss,
+                    }, 
+                    'output\ep%.6d-loss%.3f-val_loss%.3f.pt' % ((t + 1), train_epoch_loss, val_epoch_loss) # PATH
+                    )
 
         # 打印本轮训练结果
         sys.stdout.write(
