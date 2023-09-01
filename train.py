@@ -337,7 +337,7 @@ if __name__ == '__main__':
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     elif pattern == 0: # train from scratch
-        lr = 0.01
+        lr = 0.001
         batch_size = 6
         initial_epoch = 0
         epochs = 130

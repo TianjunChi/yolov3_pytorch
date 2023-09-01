@@ -131,6 +131,8 @@ class Decode(object):
 
         start = time.time()
         outs = self._yolo(image)
+        
+        print('outs.shape: ',outs[2].shape)#,len(outs[0][1]),len(outs[0][2]))
         print('\ndarknet time: {0:.6f}s'.format(time.time() - start))
 
         # win10下这一步很耗时
@@ -144,6 +146,7 @@ class Decode(object):
 
 
     def _process_feats(self, out, anchors, input_shape, use_cuda):
+        print('This is: ',out[0][0][0][0])
         txty = out[..., :2]
         twth = out[..., 2:4]
         conf = torch.sigmoid(out[..., 4:5])
@@ -152,10 +155,11 @@ class Decode(object):
 
         batch, grid_r, grid_c, box_num, cat = scores.size()
         print('score shape: ',scores.shape)
+        
         # 取前256个，可能有nms中被消除的框
         # topk_scores, topk_inds = torch.topk(scores.view(-1, ), min(256, batch*grid_r*grid_c*box_num*cat))
         topk_scores, topk_inds = torch.topk(scores.reshape(-1, ), 256)
-        print('after topk, score shape: ',topk_scores.shape,topk_scores)
+        #print('after topk, score shape: ',topk_scores.shape,topk_scores)
         topk_inds2 = topk_inds % (box_num * cat)
         box_id = (topk_inds2 / cat).int()
         class_id = (topk_inds2 % cat).int()
@@ -164,37 +168,37 @@ class Decode(object):
         topk_ys = (topk_inds3 / grid_c).int().float()
         topk_xs = (topk_inds3 % grid_c).int().float()
         topk_xys = torch.cat([topk_xs.unsqueeze(-1), topk_ys.unsqueeze(-1)], dim=1)
-        print('topk_ys,topk_xs: ',topk_ys,topk_xs)
+        #print('topk_ys,topk_xs: ',topk_ys,topk_xs)
         pos_ys = topk_inds3 * box_num * 2 + 2 * box_id + 1
         pos_xs = topk_inds3 * box_num * 2 + 2 * box_id
-        print('pos_ys,pos_xs: ',pos_ys,pos_xs)
+        #print('pos_ys,pos_xs: ',pos_ys,pos_xs)
         txty_flat = txty.contiguous().view(-1, )
         twth_flat = twth.contiguous().view(-1, )
         tys = txty_flat.gather(0, pos_ys.long())
         txs = txty_flat.gather(0, pos_xs.long())
         ths = twth_flat.gather(0, pos_ys.long())
         tws = twth_flat.gather(0, pos_xs.long())
-        print('tys,txs,ths,tws: ',tys,txs,ths,tws)
+        #print('tys,txs,ths,tws: ',tys,txs,ths,tws)
         txty_ = torch.cat([txs.unsqueeze(-1), tys.unsqueeze(-1)], dim=1)
         twth_ = torch.cat([tws.unsqueeze(-1), ths.unsqueeze(-1)], dim=1)
-        print('txty_,twth_: ',txty_,twth_)
+        #print('txty_,twth_: ',txty_,twth_)
         anchors_h = anchors.gather(0, (box_id * 2 + 1).long())
         anchors_w = anchors.gather(0, (box_id * 2).long())
         anchors_wh = torch.cat([anchors_w.unsqueeze(-1), anchors_h.unsqueeze(-1)], dim=1)
-        print('anchors_h,anchors_w,anchors_wh: ',anchors_h,anchors_w,anchors_wh)
+        #print('anchors_h,anchors_w,anchors_wh: ',anchors_h,anchors_w,anchors_wh)
         if use_cuda:
             bxby = (topk_xys + torch.sigmoid(txty_)) * input_shape / torch.Tensor([grid_r, grid_c]).cuda()
-            print('bxby: ',bxby)
+            #print('bxby: ',bxby)
         else:
             bxby = (topk_xys + torch.sigmoid(txty_)) * input_shape / torch.Tensor([grid_r, grid_c])
         bwbh = anchors_wh * torch.exp(twth_)
-        print('bwbh: ',bwbh)
+        #print('bwbh: ',bwbh)
         x0y0 = bxby - bwbh/2
-        print('x0y0: ',x0y0)
+        #print('x0y0: ',x0y0)
         x1y1 = bxby + bwbh/2
-        print('x1y1: ',x1y1)
+        #print('x1y1: ',x1y1)
         box = torch.cat([x0y0, x1y1], dim=1)
-        print('box: ',box)
+        #print('box: ',box)
         return box, topk_scores, class_id
 
     def _nms_boxes(self, boxes, scores):
@@ -240,10 +244,13 @@ class Decode(object):
 
         boxes, scores, classes = [], [], []
         i = 0
-
+        print('out0 shape: ',outs[0].shape)
         start = time.time()
-        for out in outs:
-            out = torch.Tensor(out)
+        for out in outs: # [1, 13, 13, 3, 6] & [1, 26, 26, 3, 6] & [1, 52, 52, 3, 6]
+            out = torch.Tensor(out) 
+            # TEMPORARY
+
+            # TEMPORARY
             if use_cuda:
                 out = out.cuda()
             boxes_per_field, scores_per_field, classes_per_field = self._process_feats(out, anchors[i], input_shape, use_cuda)
@@ -251,8 +258,9 @@ class Decode(object):
                 boxes_per_field, scores_per_field, classes_per_field = boxes_per_field.cpu().numpy(), scores_per_field.cpu().numpy(), classes_per_field.cpu().numpy()
             else:
                 boxes_per_field, scores_per_field, classes_per_field = boxes_per_field.numpy(), scores_per_field.numpy(), classes_per_field.numpy()
-
-            pos = np.where(scores_per_field >= self._t1)
+            ################# temp #################
+            # pos = np.where(scores_per_field >= self._t1)
+            pos = np.where(scores_per_field >= 0.1) #0.01
             if len(pos) != 0:
                 boxes_per_field = boxes_per_field[pos]
                 scores_per_field = scores_per_field[pos]

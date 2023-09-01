@@ -6,7 +6,7 @@ import operator
 import sys
 import argparse
 
-MINOVERLAP = 0.5 # default value (defined in the PASCAL VOC2012 challenge)
+MINOVERLAP = 0.2 # default value (defined in the PASCAL VOC2012 challenge)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-na', '--no-animation', help="no animation is shown.", action="store_true")
@@ -229,7 +229,7 @@ def draw_plot_func(dictionary, n_classes, window_title, plot_title, x_label, out
       if i == (len(sorted_values)-1): # largest bar
         adjust_axes(r, t, fig, axes)
   # set window title
-  fig.canvas.set_window_title(window_title)
+  # fig.canvas.set_window_title(window_title)
   # write classes in y axis
   tick_font_size = 12
   plt.yticks(range(n_classes), sorted_keys, fontsize=tick_font_size)
@@ -614,7 +614,7 @@ with open(results_files_path + "/results.txt", 'w') as results_file:
       plt.fill_between(area_under_curve_x, 0, area_under_curve_y, alpha=0.2, edgecolor='r')
       # set window title
       fig = plt.gcf() # gcf - get current figure
-      fig.canvas.set_window_title('AP ' + class_name)
+      # fig.canvas.set_window_title('AP ' + class_name)
       # set plot title
       plt.title('class: ' + text)
       #plt.suptitle('This is a somewhat long figure title', fontsize=16)

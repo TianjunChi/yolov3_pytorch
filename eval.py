@@ -138,7 +138,7 @@ class YoloTest(object):
         self.num_classes      = len(self.classes)
 
         # 只用pytorch
-        self._decode = Decode(0.3, 0.45, self.input_shape, 'E:\yolov3_pytorch\output\ep000202-loss11.172-val_loss11.170.pt', self.file, initial_filters=8)
+        self._decode = Decode(0.3, 0.45, self.input_shape, "E:\yolov3_pytorch\output\ep000035-loss6.718-val_loss6.088.pt", self.file, initial_filters=8)
 
 
 
@@ -159,7 +159,7 @@ class YoloTest(object):
                 image_path = annotation[0]
                 image_name = image_path.split('/')[-1]
                 image = cv2.imread('E:\yolov3_pytorch\\annotation\data_parallel\\images\\'+image_path)
-                cv2.imshow('image', image)
+                # cv2.imshow('image', image)
                 # 标注用空格分隔 + int
                 bbox_data_gt = np.array([list(map(float, box.split(' '))) for box in annotation[1:]])
                 bbox_data_gt = bbox_data_gt.T
@@ -167,8 +167,10 @@ class YoloTest(object):
                 # bbox_data_gt = np.array([list(map(int, box.split(','))) for box in annotation[1:]])
 
                 if len(bbox_data_gt) == 0:
+                    print("No match,failed")
                     bboxes_gt=[]
                     classes_gt=[]
+                    return 
                 else:
                     print(bbox_data_gt.shape)
                     bboxes_gt, classes_gt = bbox_data_gt[:, :4], bbox_data_gt[:, 4]
@@ -203,7 +205,7 @@ class YoloTest(object):
                         f.write(bbox_mess)
                         print('\t' + str(bbox_mess).strip())
             print('total time: {0:.6f}s'.format(time.time() - start))
-
+            
 import torch
 import platform
 sysstr = platform.system()

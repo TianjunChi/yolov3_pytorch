@@ -4,7 +4,7 @@ version:
 Author: congsir
 Date: 2023-07-07 14:02:58
 LastEditors: Please set LastEditors
-LastEditTime: 2023-07-28 15:49:17
+LastEditTime: 2023-08-31 11:06:52
 '''
 import json
 from collections import defaultdict
@@ -117,3 +117,4 @@ def convert_coco(labels_dir='../coco/annotations/', use_segments=False, use_keyp
 
 if __name__ == "__main__":
     convert_coco(labels_dir='F:\OSX_train\\annotation', use_keypoints=True)
+    
