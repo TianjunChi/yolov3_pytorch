@@ -145,7 +145,7 @@ class Decode(object):
         return boxes, scores, classes
 
 
-    def _process_feats(self, out, anchors, input_shape, use_cuda):
+    def _process_feats(self, out, anchors, input_shape, use_cuda): # process feature
         print('This is: ',out[0][0][0][0])
         txty = out[..., :2]
         twth = out[..., 2:4]
@@ -158,7 +158,7 @@ class Decode(object):
         
         # 取前256个，可能有nms中被消除的框
         # topk_scores, topk_inds = torch.topk(scores.view(-1, ), min(256, batch*grid_r*grid_c*box_num*cat))
-        topk_scores, topk_inds = torch.topk(scores.reshape(-1, ), 256)
+        topk_scores, topk_inds = torch.topk(scores.reshape(-1, ), min(256, batch*grid_r*grid_c*box_num*cat))
         #print('after topk, score shape: ',topk_scores.shape,topk_scores)
         topk_inds2 = topk_inds % (box_num * cat)
         box_id = (topk_inds2 / cat).int()
@@ -225,6 +225,7 @@ class Decode(object):
             inter = w1 * h1
 
             ovr = inter / (areas[i] + areas[order[1:]] - inter)
+            print("ovr: ",ovr)
             inds = np.where(ovr <= self._t2)[0]
             order = order[inds + 1]
         keep = np.array(keep)
@@ -236,6 +237,7 @@ class Decode(object):
         h, w = input_shape
         input_shape = torch.Tensor(input_shape)
         anchors = torch.Tensor([[116, 90, 156, 198, 373, 326], [30, 61, 62, 45, 59, 119], [10, 13, 16, 30, 33, 23]])
+        # anchors = torch.Tensor([[17,22,20,18,22,20],[12,21,16,17,17,34],[7,14,8,16,10,27]])
         use_cuda = torch.cuda.is_available()
         # use_cuda = False
         if use_cuda:
@@ -254,6 +256,7 @@ class Decode(object):
             if use_cuda:
                 out = out.cuda()
             boxes_per_field, scores_per_field, classes_per_field = self._process_feats(out, anchors[i], input_shape, use_cuda)
+            # print('feats_result: ',boxes_per_field, scores_per_field, classes_per_field)
             if use_cuda:
                 boxes_per_field, scores_per_field, classes_per_field = boxes_per_field.cpu().numpy(), scores_per_field.cpu().numpy(), classes_per_field.cpu().numpy()
             else:
@@ -277,18 +280,41 @@ class Decode(object):
         print('feat time: {0:.6f}s'.format(time.time() - start))
         start = time.time()
 
+        # (xmin, ymin, xmax, ymax) -> (xmin_org, ymin_org, xmax_org, ymax_org)
         # Scale boxes back to original image shape.
-        iw, ih = shape[1], shape[0]
-        scale = min(w / iw, h / ih)
-        nw = int(iw * scale)
-        nh = int(ih * scale)
-        dx = (w - nw) / (2*scale)
-        dy = (h - nh) / (2*scale)
-        sc = max(iw, ih)
+        
+        iw, ih = shape[1], shape[0] # 320 160
+        scale = min(w / iw, h / ih) # 416/320 416/160 # 训练时416 * 416 # 取 416/320
+        print("iw,ih: ",iw,ih)
+        print("scale: ",scale)
+        dw = (w - iw * scale) / 2
+        dh = (h - ih * scale) / 2
+        print("dw,dh: ",dw,dh)
+        #boxes = boxes * image_dims - dd
+        #boxes = (boxes - [0,104,0,104]) / 1.3
+        boxes[:, 0::2] = 1.0 * (boxes[:, 0::2] - dw) / scale
+        boxes[:, 1::2] = 1.0 * (boxes[:, 1::2] - dh) / scale /2
+        
+
+        """
+        iw, ih = shape[1], shape[0] # 320 160
+        scale = min(w / iw, h / ih) # 416/320 416/160 # 训练时416 * 416 # 取 416/320
+        print(scale)
+        nw = int(iw * scale) # 416
+        nh = int(ih * scale) # 208
+        dx = (w - nw) / (2*scale) # 0
+        dy = (h - nh) / (2*scale) # 80
+        print("iw, ih: ",iw, ih)
+        print("w, h: ",w, h)
+        sc = max(iw, ih) 
         sc_y, sc_x = sc/h, sc/w
         image_dims = [sc_x, sc_y, sc_x, sc_y]
         dd = [dx, dy, dx, dy]
-        boxes = boxes * image_dims - dd
+        print("image dims: ",image_dims)
+        print("dd: ",dd)
+        # boxes = boxes * image_dims - dd
+        # boxes = (boxes - [0,104,0,104]) *  image_dims - [0,50,0,50]
+        """
 
         nboxes, nscores, nclasses = [], [], []
         for c in set(classes):
@@ -296,7 +322,7 @@ class Decode(object):
             b = boxes[inds]
             s = scores[inds]
             c = classes[inds]
-
+            print("start nms~~~~")
             keep = self._nms_boxes(b, s)
 
             nboxes.append(b[keep])
@@ -312,5 +338,3 @@ class Decode(object):
         print('nms time: {0:.6f}s'.format(time.time() - start))
 
         return boxes, scores, classes
-
-

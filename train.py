@@ -43,7 +43,9 @@ def training_transform(height, width, output_height, output_width):
 def image_preporcess(image, target_size, gt_boxes=None):
     # 这里改变了一部分原作者的代码。可以发现，传入训练的图片是bgr格式
     ih, iw = target_size
+    print("target shape: ",ih,iw)
     h, w = image.shape[:2]
+    print("image shape: ",h,w)
     M, h_out, w_out = training_transform(h, w, ih, iw)
     # 填充黑边缩放
     letterbox = cv2.warpAffine(image, M, (w_out, h_out))
@@ -288,12 +290,22 @@ if __name__ == '__main__':
 
     class_names = get_classes(classes_path)
     num_classes = len(class_names)
+    """
     anchors = np.array([
         [[1.25, 1.625], [2.0, 3.75], [4.125, 2.875]],
         [[1.875, 3.8125], [3.875, 2.8125], [3.6875, 7.4375]],
         [[3.625, 2.8125], [4.875, 6.1875], [11.65625, 10.1875]]
     ])
-
+    """
+    """
+    anchors = torch.Tensor([[[10, 13], [16, 30], [33, 23]],
+                            [[30, 61], [62, 45], [59, 119]],
+                            [[116, 90], [156, 198], [373, 326]]                
+    ])
+    """
+    anchors = torch.Tensor([[[7,14],[8,16],[10,27]],
+                           [[12,21],[16,17],[17,34]],
+                           [[17,22],[20,18],[22,20]]])
     # 模式。 0-从头训练，1-读取模型训练（包括解冻），2-读取coco预训练模型训练
     #pattern = 0
     save_best_only = False
@@ -309,7 +321,7 @@ if __name__ == '__main__':
     alpha_3 = 0.5  # 大感受野输出层的focal_loss的alpha
 
     # 初始卷积核个数
-    initial_filters = 8
+    initial_filters = 8 
 
     net = Darknet(num_classes, initial_filters=initial_filters) # initialize the model
     device = torch.device('cuda' if use_cuda else 'cpu')
@@ -327,7 +339,7 @@ if __name__ == '__main__':
     elif pattern == 1: # load the pretrained model
         lr = 0.0001
         batch_size = 6
-        initial_epoch = 20
+        initial_epoch = 35
         epochs = 300
         # 解冻代码待补充
         # 分支1可用
@@ -386,7 +398,7 @@ if __name__ == '__main__':
         for step in range(train_steps):
 
             batch_image, lables = generate_one_batch(train_lines, step, batch_size, anchors, num_classes,
-                                                     max_bbox_per_scale, 'train')
+                                                    max_bbox_per_scale, 'train')
             if use_cuda:
                 batch_image = torch.Tensor(batch_image).cuda()
                 lables = [torch.Tensor(it).cuda() for it in lables]
@@ -445,7 +457,7 @@ if __name__ == '__main__':
 
         # 保存模型
         content = '%d\tloss = %.4f\tval_loss = %.4f\n' % ((t + 1), train_epoch_loss, val_epoch_loss)
-        with open('yolov3_pytorch_logs.txt', 'a', encoding='utf-8') as f:
+        with open('yolov3_pytorch_logs_new_anchor.txt', 'a', encoding='utf-8') as f:
             f.write(content)
             f.close()
         path_dir = os.listdir('./')

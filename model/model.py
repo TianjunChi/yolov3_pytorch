@@ -3,7 +3,7 @@ import torch as T
 import math
 import numpy as np
 
-class Conv2dUnit(torch.nn.Module):
+class Conv2dUnit(torch.nn.Module): # Conv + BN + ReLu
     def __init__(self, input_dim, filters, kernels, stride, padding):
         super(Conv2dUnit, self).__init__()
         self.conv = torch.nn.Conv2d(input_dim, filters, kernel_size=kernels, stride=stride, padding=padding, bias=False)
@@ -16,6 +16,7 @@ class Conv2dUnit(torch.nn.Module):
         self.bn.bias.data = torch.Tensor(np.random.normal(loc=0.0, scale=0.01, size=(filters, )))
         self.bn.running_mean.data = torch.Tensor(np.random.normal(loc=0.0, scale=0.01, size=(filters, )))
         self.bn.running_var.data = torch.Tensor(np.random.normal(loc=0.0, scale=0.01, size=(filters, )))
+        
     def forward(self, x):
         x = self.conv(x)
         x = self.bn(x)

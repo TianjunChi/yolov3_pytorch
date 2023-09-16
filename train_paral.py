@@ -458,11 +458,11 @@ if __name__ == '__main__':
         #lr = 0.000001
         lr = 0.0001
         batch_size = 6
-        initial_epoch = 100
+        initial_epoch = 35
         epochs = 300
         # 解冻代码待补充
         # 分支1可用
-        checkpoint = torch.load('ep000020-loss6728.622-val_loss7037.984.pt')
+        checkpoint = torch.load('ep000035-loss6.718-val_loss6.088.pt')
         net.load_state_dict(checkpoint['model_state_dict'])
         optimizer = torch.optim.Adam(net.parameters()) # define an Adam optimizer
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])

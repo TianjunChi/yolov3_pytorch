@@ -1,0 +1,12 @@
+1	loss = 2753.9575	val_loss = 203.0464
+2	loss = 99.4786	val_loss = 49.1387
+3	loss = 33.5868	val_loss = 25.3531
+4	loss = 19.3738	val_loss = 14.7603
+5	loss = 12.9384	val_loss = 10.7102
+6	loss = 10.2548	val_loss = 8.5579
+7	loss = 9.0215	val_loss = 7.5970
+8	loss = 8.2743	val_loss = 7.4138
+9	loss = 7.7222	val_loss = 6.7385
+10	loss = 7.4486	val_loss = 6.4403
+11	loss = 7.0353	val_loss = 6.2414
+12	loss = 6.8480	val_loss = 5.8055

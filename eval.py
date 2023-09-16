@@ -37,7 +37,7 @@ def get_anchors(anchors_path):
 
 
 
-def draw_bbox(image, bboxes, classes, show_label=True):
+def draw_bbox(image, bboxes, classes, show_label=False):
     num_classes = len(classes)
     image_h, image_w, _ = image.shape
     hsv_tuples = [(1.0 * x / num_classes, 1., 1.) for x in range(num_classes)]
@@ -62,9 +62,10 @@ def draw_bbox(image, bboxes, classes, show_label=True):
             bbox_mess = '%s: %.2f' % (classes[class_ind], score)
             t_size = cv2.getTextSize(bbox_mess, 0, fontScale, thickness=bbox_thick//2)[0]
             cv2.rectangle(image, c1, (c1[0] + t_size[0], c1[1] - t_size[1] - 3), bbox_color, -1)  # filled
-
+            """
             cv2.putText(image, bbox_mess, (c1[0], c1[1]-2), cv2.FONT_HERSHEY_SIMPLEX,
                         fontScale, (0, 0, 0), bbox_thick//2, lineType=cv2.LINE_AA)
+            """
     return image
 
 def training_transform(height, width, output_height, output_width):
@@ -87,7 +88,7 @@ def process_image(img, input_shape):
     pimage = np.expand_dims(pimage, axis=0)
     return pimage
 
-def detect_image(image, _decode, input_shape):
+def detect_image(image, _decode, input_shape): # print the bounding box 
     pimage = process_image(image, input_shape)
     print('pimage shape: ',pimage.shape)
     start = time.time()
@@ -111,9 +112,9 @@ def detect_image(image, _decode, input_shape):
     return []
 
 
-class YoloTest(object):
+class YoloTest(object): c
     def __init__(self):
-        self.input_shape       = (416, 416)
+        self.input_shape       = (320, 320) # 416 416
 
         # radar data
         self.file             = 'annotation/classes.txt'
@@ -134,11 +135,14 @@ class YoloTest(object):
         self.write_image      = True
 
         self.write_image_path = "./mAP/detection/"
-        self.show_label       = True
+        self.show_label       = False
         self.num_classes      = len(self.classes)
 
         # 只用pytorch
-        self._decode = Decode(0.3, 0.45, self.input_shape, "E:\yolov3_pytorch\output\ep000035-loss6.718-val_loss6.088.pt", self.file, initial_filters=8)
+        self._decode = Decode(0.3, 0.45, self.input_shape, "E:\yolov3_pytorch\output_same_anchor\ep000130-loss4.866-val_loss3.877.pt", self.file, initial_filters=8)
+        # "E:\yolov3_pytorch\output_old_anchor\ep000043-loss6.713-val_loss5.464.pt" # old anchor
+        # "E:\yolov3_pytorch\output\ep000130-loss4.866-val_loss3.877.pt"    # same anchor
+        # "E:\yolov3_pytorch\output\ep000011-loss7.035-val_loss6.241.pt"  # new anchor
 
 
 
