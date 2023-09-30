@@ -8,7 +8,7 @@ import time
 import os
 import numpy as np
 
-from model.model import Darknet
+from model.model_new import Darknet
 
 
 class Decode(object):
@@ -132,7 +132,7 @@ class Decode(object):
         start = time.time()
         outs = self._yolo(image)
         
-        print('outs.shape: ',outs[2].shape)#,len(outs[0][1]),len(outs[0][2]))
+        print('outs.shape: ',outs[0].shape)#,len(outs[0][1]),len(outs[0][2]))
         print('\ndarknet time: {0:.6f}s'.format(time.time() - start))
 
         # win10下这一步很耗时
@@ -146,16 +146,15 @@ class Decode(object):
 
 
     def _process_feats(self, out, anchors, input_shape, use_cuda): # process feature
-        print('This is: ',out[0][0][0][0])
+        #print('This is: ',out)
         txty = out[..., :2]
         twth = out[..., 2:4]
         conf = torch.sigmoid(out[..., 4:5])
         class_p = torch.sigmoid(out[..., 5:])
         scores = conf*class_p   
-
+        # print('score shape: ',scores.shape)
         batch, grid_r, grid_c, box_num, cat = scores.size()
         print('score shape: ',scores.shape)
-        
         # 取前256个，可能有nms中被消除的框
         # topk_scores, topk_inds = torch.topk(scores.view(-1, ), min(256, batch*grid_r*grid_c*box_num*cat))
         topk_scores, topk_inds = torch.topk(scores.reshape(-1, ), min(256, batch*grid_r*grid_c*box_num*cat))
@@ -182,23 +181,29 @@ class Decode(object):
         txty_ = torch.cat([txs.unsqueeze(-1), tys.unsqueeze(-1)], dim=1)
         twth_ = torch.cat([tws.unsqueeze(-1), ths.unsqueeze(-1)], dim=1)
         #print('txty_,twth_: ',txty_,twth_)
+        # print('twth: ',twth_)
         anchors_h = anchors.gather(0, (box_id * 2 + 1).long())
         anchors_w = anchors.gather(0, (box_id * 2).long())
         anchors_wh = torch.cat([anchors_w.unsqueeze(-1), anchors_h.unsqueeze(-1)], dim=1)
         #print('anchors_h,anchors_w,anchors_wh: ',anchors_h,anchors_w,anchors_wh)
         if use_cuda:
             bxby = (topk_xys + torch.sigmoid(txty_)) * input_shape / torch.Tensor([grid_r, grid_c]).cuda()
-            #print('bxby: ',bxby)
+            print('topk_xys: ',topk_xys[0])
+            print('sig(txty): ',torch.sigmoid(txty_)[0])
+            print('txty_: ',txty_[0])
         else:
             bxby = (topk_xys + torch.sigmoid(txty_)) * input_shape / torch.Tensor([grid_r, grid_c])
-        bwbh = anchors_wh * torch.exp(twth_)
-        #print('bwbh: ',bwbh)
+        bwbh = anchors_wh * torch.exp(twth_) * input_shape / torch.Tensor([grid_r, grid_c])
+        print("anchor: ",anchors_wh[0])
+        print("exp_twth: ",torch.exp(twth_)[0])
+        print('bwbh: ',anchors_wh[0] * torch.exp(twth_)[0])
         x0y0 = bxby - bwbh/2
-        #print('x0y0: ',x0y0)
+        print('x0y0: ',x0y0[0])
         x1y1 = bxby + bwbh/2
-        #print('x1y1: ',x1y1)
+        print('x1y1: ',x1y1[0])
         box = torch.cat([x0y0, x1y1], dim=1)
-        #print('box: ',box)
+        print('box: ',box[0])
+        print('topk_scores: ',topk_scores[0])
         return box, topk_scores, class_id
 
     def _nms_boxes(self, boxes, scores):
@@ -236,8 +241,9 @@ class Decode(object):
         # print('Below is yolo out: ',outs, shape, input_shape)
         h, w = input_shape
         input_shape = torch.Tensor(input_shape)
-        anchors = torch.Tensor([[116, 90, 156, 198, 373, 326], [30, 61, 62, 45, 59, 119], [10, 13, 16, 30, 33, 23]])
+        # anchors = torch.Tensor([[116, 90, 156, 198, 373, 326], [30, 61, 62, 45, 59, 119], [10, 13, 16, 30, 33, 23]])
         # anchors = torch.Tensor([[17,22,20,18,22,20],[12,21,16,17,17,34],[7,14,8,16,10,27]])
+        anchors = torch.Tensor([[7,14,8,16,10,27]])
         use_cuda = torch.cuda.is_available()
         # use_cuda = False
         if use_cuda:
@@ -248,7 +254,7 @@ class Decode(object):
         i = 0
         print('out0 shape: ',outs[0].shape)
         start = time.time()
-        for out in outs: # [1, 13, 13, 3, 6] & [1, 26, 26, 3, 6] & [1, 52, 52, 3, 6]
+        for out in outs: # [1, 52, 52, 3, 6]
             out = torch.Tensor(out) 
             # TEMPORARY
 

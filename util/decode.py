@@ -36,7 +36,7 @@ def decode(conv_output, anchors, stride):
 
     # T.sigmoid(conv_raw_dxdy)的shape是(N, n, n, 3, 2)，grid_offset的shape是(n, n, 3, 2)。属于不同shape相加
     pred_xy = (T.sigmoid(conv_raw_dxdy) + grid_offset) * stride
-    pred_wh = (T.exp(conv_raw_dwdh) * anchor_t) * stride
+    pred_wh = (T.exp(conv_raw_dwdh) * anchor_t) * stride # 3种尺度的框都计算了
     pred_xywh = T.cat((pred_xy, pred_wh), dim=-1)
 
     pred_conf = T.sigmoid(conv_raw_conf)

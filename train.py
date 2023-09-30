@@ -134,12 +134,14 @@ def parse_annotation(annotation, train_input_size, annotation_type):
     else:
         bboxes = np.array([list(map(lambda x: int(float(x)), box.split(','))) for box in line[1:]])
         bboxes = bboxes.transpose(1,0)
+    """
     if annotation_type == 'train':
         # image, bboxes = random_fill(np.copy(image), np.copy(bboxes))    # 数据集缺乏小物体时打开
         image, bboxes = random_horizontal_flip(np.copy(image), np.copy(bboxes))
         image, bboxes = random_crop(np.copy(image), np.copy(bboxes))
         image, bboxes = random_translate(np.copy(image), np.copy(bboxes))
-    image, bboxes = image_preporcess(np.copy(image), [train_input_size, train_input_size], np.copy(bboxes))
+    """
+    image, bboxes = image_preporcess(np.copy(image), [train_input_size[0], train_input_size[1]], np.copy(bboxes))
     return image, bboxes, exist_boxes
 
 def bbox_iou_data(boxes1, boxes2):
@@ -159,7 +161,7 @@ def bbox_iou_data(boxes1, boxes2):
     return inter_area / union_area
 
 def preprocess_true_boxes(bboxes, train_output_sizes, strides, num_classes, max_bbox_per_scale, anchors):
-    label = [np.zeros((train_output_sizes[i], train_output_sizes[i], 3,
+    label = [np.zeros((train_output_sizes[0][i], train_output_sizes[1][i], 3,
                        5 + num_classes)) for i in range(3)]
     bboxes_xywh = [np.zeros((max_bbox_per_scale, 4)) for _ in range(3)]
     bbox_count = np.zeros((3,))
@@ -172,11 +174,12 @@ def preprocess_true_boxes(bboxes, train_output_sizes, strides, num_classes, max_
         bbox_xywh_scaled = 1.0 * bbox_xywh[np.newaxis, :] / strides[:, np.newaxis]
         iou = []
         for i in range(3):
-            anchors_xywh = np.zeros((3, 4))
-            anchors_xywh[:, 0:2] = np.floor(bbox_xywh_scaled[i, 0:2]).astype(np.int32) + 0.5
-            anchors_xywh[:, 2:4] = anchors[i]
-            iou_scale = bbox_iou_data(bbox_xywh_scaled[i][np.newaxis, :], anchors_xywh)
+            anchors_xywh = np.zeros((3, 4)) # 每个尺度有3个对应的anchor
+            anchors_xywh[:, 0:2] = np.floor(bbox_xywh_scaled[i, 0:2]).astype(np.int32) + 0.5 
+            anchors_xywh[:, 2:4] = anchors[i] # 3个anchor的宽高
+            iou_scale = bbox_iou_data(bbox_xywh_scaled[i][np.newaxis, :], anchors_xywh) # 用scaled之后的bbox坐标与当前尺度的anchor分别计算IOU
             iou.append(iou_scale)
+        
         best_anchor_ind = np.argmax(np.array(iou).reshape(-1), axis=-1)
         best_detect = int(best_anchor_ind / 3)
         best_anchor = int(best_anchor_ind % 3)
@@ -196,7 +199,11 @@ def preprocess_true_boxes(bboxes, train_output_sizes, strides, num_classes, max_
         bboxes_xywh[best_detect][bbox_ind, :4] = bbox_xywh
         bbox_count[best_detect] += 1
     label_sbbox, label_mbbox, label_lbbox = label
+    #print('label sbbox: ',sbboxes[0])
+    print('label mbbox: ',label[1][0][0])
+    print('label lbbox: ',label[2][0][0])
     sbboxes, mbboxes, lbboxes = bboxes_xywh
+    print('label sbbox: ',sbboxes[0])
     return label_sbbox, label_mbbox, label_lbbox, sbboxes, mbboxes, lbboxes
 
 def multi_thread_read(batch, num, train_input_size, annotation_type, train_output_sizes, strides, num_classes, max_bbox_per_scale, anchors, batch_image,
@@ -217,20 +224,23 @@ def generate_one_batch(annotation_lines, step, batch_size, anchors, num_classes,
     n = len(annotation_lines)
 
     # 多尺度训练
-    train_input_sizes = [320, 352, 384, 416, 448, 480, 512, 544, 576, 608]
-    train_input_size = random.choice(train_input_sizes)
+    #train_input_sizes = [320, 352, 384, 416, 448, 480, 512, 544, 576, 608]
+    #train_input_size = random.choice(train_input_sizes)
+    train_input_size = [320,320]
     strides = np.array([8, 16, 32])
 
     # 输出的网格数
-    train_output_sizes = train_input_size // strides
+    train_output_sizes = [[],[]]
+    train_output_sizes[0] = train_input_size[0] // strides
+    train_output_sizes[1] = train_input_size[1] // strides
 
-    batch_image = np.zeros((batch_size, train_input_size, train_input_size, 3))
+    batch_image = np.zeros((batch_size, train_input_size[0], train_input_size[1], 3))
 
-    batch_label_sbbox = np.zeros((batch_size, train_output_sizes[0], train_output_sizes[0],
+    batch_label_sbbox = np.zeros((batch_size, train_output_sizes[0][0], train_output_sizes[1][0],
                                   3, 5 + num_classes))
-    batch_label_mbbox = np.zeros((batch_size, train_output_sizes[1], train_output_sizes[1],
+    batch_label_mbbox = np.zeros((batch_size, train_output_sizes[0][1], train_output_sizes[1][1],
                                   3, 5 + num_classes))
-    batch_label_lbbox = np.zeros((batch_size, train_output_sizes[2], train_output_sizes[2],
+    batch_label_lbbox = np.zeros((batch_size, train_output_sizes[0][2], train_output_sizes[1][2],
                                   3, 5 + num_classes))
 
     batch_sbboxes = np.zeros((batch_size, max_bbox_per_scale, 4))

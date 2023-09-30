@@ -19,7 +19,7 @@ import os
 import shutil
 import numpy as np
 
-from model.decoder import Decode
+from model.decoder_new import Decode
 
 def read_class_names(class_file_name):
     names = {}
@@ -112,7 +112,7 @@ def detect_image(image, _decode, input_shape): # print the bounding box
     return []
 
 
-class YoloTest(object): c
+class YoloTest(object): 
     def __init__(self):
         self.input_shape       = (320, 320) # 416 416
 
@@ -139,13 +139,14 @@ class YoloTest(object): c
         self.num_classes      = len(self.classes)
 
         # 只用pytorch
-        self._decode = Decode(0.3, 0.45, self.input_shape, "E:\yolov3_pytorch\output_same_anchor\ep000130-loss4.866-val_loss3.877.pt", self.file, initial_filters=8)
+        self._decode = Decode(0.3, 0.45, self.input_shape, "E:\yolov3_pytorch\output\ep000020-loss2.131-val_loss2.953.pt", self.file, initial_filters=8)
         # "E:\yolov3_pytorch\output_old_anchor\ep000043-loss6.713-val_loss5.464.pt" # old anchor
         # "E:\yolov3_pytorch\output\ep000130-loss4.866-val_loss3.877.pt"    # same anchor
         # "E:\yolov3_pytorch\output\ep000011-loss7.035-val_loss6.241.pt"  # new anchor
-
-
-
+        # "E:\yolov3_pytorch\output\ep000018-loss6.437-val_loss5.407.pt" # same new anchor
+        # "E:\yolov3_pytorch\output\ep000030-loss2.479-val_loss3.344.pt" # single head 320*320
+        # "E:\yolov3_pytorch\output\ep000018-loss2.175-val_loss2.888.pt" # single head 320*160 - 
+        # "E:\yolov3_pytorch\output\ep000014-loss2.527-val_loss2.885.pt" # float single head 320*160
     def evaluate(self):
         predicted_dir_path = './mAP/predicted'
         ground_truth_dir_path = './mAP/ground-truth'
@@ -199,7 +200,8 @@ class YoloTest(object): c
 
                 with open(predict_result_path, 'w') as f:
                     for bbox in bboxes_pr:
-                        coor = np.array(bbox[:4], dtype=np.int32)
+                        # coor = np.array(bbox[:4], dtype=np.int32)
+                        coor = np.array(bbox[:4], dtype=float)
                         score = bbox[4]
                         class_ind = int(bbox[5])
                         class_name = self.classes[class_ind]
@@ -219,8 +221,4 @@ print(torch.__version__)
 if sysstr == 'Windows':
     torch.backends.cudnn.enabled = False
 
-
 if __name__ == '__main__': YoloTest().evaluate()
-
-
-

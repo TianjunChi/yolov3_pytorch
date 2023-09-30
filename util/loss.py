@@ -1,3 +1,11 @@
+'''
+Descripttion: 
+version: 
+Author: congsir
+Date: 2023-07-28 15:01:03
+LastEditors: Please set LastEditors
+LastEditTime: 2023-09-26 09:47:26
+'''
 import torch
 import torch as T
 import math
@@ -115,10 +123,11 @@ def loss_layer(conv, pred, label, bboxes, stride, num_class, iou_loss_thresh, al
     ciou_loss = respond_bbox * bbox_loss_scale * (1 - ciou)  # 1. respond_bbox作为mask，有物体才计算xxxiou_loss
 
     # 2. respond_bbox作为mask，有物体才计算类别loss
-    prob_pos_loss = label_prob * (0 - T.log(pred_prob + 1e-9))             # 二值交叉熵，tf中也是加了极小的常数防止nan
-    prob_neg_loss = (1 - label_prob) * (0 - T.log(1 - pred_prob + 1e-9))   # 二值交叉熵，tf中也是加了极小的常数防止nan
+    prob_pos_loss = label_prob * (0 - T.log(pred_prob + 1e-9))             # 二值交叉熵，tf中也是加了极小的常数防止nan 类别损失
+    prob_neg_loss = (1 - label_prob) * (0 - T.log(1 - pred_prob + 1e-9))   # 二值交叉熵，tf中也是加了极小的常数防止nan 类别损失
     prob_mask = respond_bbox.repeat((1, 1, 1, 1, num_class))
     prob_loss = prob_mask * (prob_pos_loss + prob_neg_loss)
+    # prob_loss = 0
 
     # 3. xxxiou_loss和类别loss比较简单。重要的是conf_loss，是一个focal_loss
     # 分两步：第一步是确定 grid_h * grid_w * 3 个预测框 哪些作为反例；第二步是计算focal_loss。
@@ -163,6 +172,7 @@ def loss_layer(conv, pred, label, bboxes, stride, num_class, iou_loss_thresh, al
     return ciou_loss + conf_loss + prob_loss 
 
 def yolo_loss(args, num_classes, iou_loss_thresh, anchors, alpha_1, alpha_2, alpha_3):
+    """
     conv_lbbox = args[0]   # (?, ?, ?, 3, num_classes+5)
     conv_mbbox = args[1]   # (?, ?, ?, 3, num_classes+5)
     conv_sbbox = args[2]   # (?, ?, ?, 3, num_classes+5)
@@ -172,14 +182,20 @@ def yolo_loss(args, num_classes, iou_loss_thresh, anchors, alpha_1, alpha_2, alp
     true_sbboxes = args[6]   # (?, 150, 4)
     true_mbboxes = args[7]   # (?, 150, 4)
     true_lbboxes = args[8]   # (?, 150, 4)
+    """
+    conv_sbbox = args[0]   # (?, ?, ?, 3, num_classes+5)
+    label_sbbox = args[1]   # (?, ?, ?, 3, num_classes+5)
+    true_sbboxes = args[2]   # (?, 150, 4)
+    print("conv_box shape: ",conv_sbbox[0].shape,conv_sbbox[1].shape)
     pred_sbbox = decode(conv_sbbox, anchors[0], 8)
-    pred_mbbox = decode(conv_mbbox, anchors[1], 16)
-    pred_lbbox = decode(conv_lbbox, anchors[2], 32)
+    #pred_mbbox = decode(conv_mbbox, anchors[1], 16)
+    #pred_lbbox = decode(conv_lbbox, anchors[2], 32)
     loss_sbbox = loss_layer(conv_sbbox, pred_sbbox, label_sbbox, true_sbboxes, 8, num_classes, iou_loss_thresh, alpha=alpha_1)
-    loss_mbbox = loss_layer(conv_mbbox, pred_mbbox, label_mbbox, true_mbboxes, 16, num_classes, iou_loss_thresh, alpha=alpha_2)
-    loss_lbbox = loss_layer(conv_lbbox, pred_lbbox, label_lbbox, true_lbboxes, 32, num_classes, iou_loss_thresh, alpha=alpha_3)
-    print('sbbox: ',loss_sbbox,' mbbox: ',loss_mbbox,' lbbox: ',loss_lbbox)
-    return loss_sbbox + loss_mbbox + loss_lbbox
+    #loss_mbbox = loss_layer(conv_mbbox, pred_mbbox, label_mbbox, true_mbboxes, 16, num_classes, iou_loss_thresh, alpha=alpha_2)
+    #loss_lbbox = loss_layer(conv_lbbox, pred_lbbox, label_lbbox, true_lbboxes, 32, num_classes, iou_loss_thresh, alpha=alpha_3)
+    print("sbbox: ",loss_sbbox)
+    #print('sbbox: ',loss_sbbox,' mbbox: ',loss_mbbox,' lbbox: ',loss_lbbox)
+    return loss_sbbox #+ loss_mbbox + loss_lbbox
 
 class YoloLoss(torch.nn.Module):
     def __init__(self, num_classes, iou_loss_thresh, anchors, alpha_1, alpha_2, alpha_3):

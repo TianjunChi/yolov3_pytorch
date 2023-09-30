@@ -4,7 +4,7 @@ version:
 Author: congsir
 Date: 2023-09-11 10:58:36
 LastEditors: Please set LastEditors
-LastEditTime: 2023-09-11 11:19:56
+LastEditTime: 2023-09-21 14:32:19
 '''
 from kmeans import kmeans, avg_iou
 CLUSTERS = 9
@@ -31,9 +31,14 @@ def load_dataset(dir):
 
 data = load_dataset(ANNOTATIONS_PATH)
 out = kmeans(data, k=CLUSTERS)
-print("Accuracy: {:.2f}%".format(avg_iou(data, out) * 100))
 print("Boxes:\n {}".format(out))
-print("Boxes:\n {}".format(out*416))
+print("Accuracy: {:.2f}%".format(avg_iou(data, out) * 100))
+out[:,0] = out[:,0]*320
+out[:,1] = out[:,1]*160
+
+print("Boxes:\n {}".format(out))
+#print("Boxes:\n {}".format(out[:,1]*320).format(out[:,2]*160))
+#print("Boxes:\n {}".format(out[1]*160))
 
 ratios = np.around(out[:, 0] / out[:, 1], decimals=2).tolist()
 print("Ratios:\n {}".format(sorted(ratios)))
